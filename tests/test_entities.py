@@ -326,3 +326,18 @@ async def test_button_press_on_the_device_fires_an_event(hass: HomeAssistant, co
     container.jobs[0]["state"] = "done"
     await poll(hass, config_entry)
     assert len(pressed) == 2
+
+
+async def test_finish_button_while_a_job_waits(hass: HomeAssistant, config_entry, container: FakeContainer) -> None:
+    await setup_entry(hass, config_entry)
+    finish = hass.states.get("button.office_scanner_finish_without_rear_pages")
+    assert finish is not None and finish.state == "unavailable", "nothing waits for rear pages yet"
+
+    container.status["waiting"] = True
+    container.jobs.insert(0, {"job": "2026-10-10-11-00-00", "state": "waiting_for_rear"})
+    await poll(hass, config_entry)
+    assert hass.states.get("button.office_scanner_finish_without_rear_pages").state != "unavailable"
+    await hass.services.async_call("button", "press", {"entity_id": "button.office_scanner_finish_without_rear_pages"}, blocking=True)
+    await hass.async_block_till_done()
+    posts = [r for r in container.requests if r[0] == "POST"]
+    assert posts[-1][1] == "/api/jobs/2026-10-10-11-00-00/finish"

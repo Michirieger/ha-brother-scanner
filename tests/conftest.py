@@ -129,6 +129,10 @@ class FakeContainer:
             return web.json_response(self.device_status)
         if path == "/api/jobs":
             return web.json_response(self.jobs)
+        if m := re.fullmatch(r"/api/jobs/([^/]+)/finish", path):
+            if not self._authorized(request):
+                return web.json_response({"code": 401, "message": "API token required"}, status=401)
+            return web.json_response({"message": "Job finishes without rear pages", "job": m.group(1)})
         if m := re.fullmatch(r"/api/jobs/([^/]+)/rear", path):
             if not self._authorized(request):
                 return web.json_response({"code": 401, "message": "API token required"}, status=401)

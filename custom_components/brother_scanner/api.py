@@ -128,6 +128,10 @@ class ScannerApi:
         """Scan the rear pages of the job that waits for them."""
         return await self._request("POST", f"/api/jobs/{quote(job_id)}/rear")
 
+    async def finish(self, job_id: str) -> dict[str, Any]:
+        """Convert the job that waits for rear pages now, without them (container 2.2+)."""
+        return await self._request("POST", f"/api/jobs/{quote(job_id)}/finish")
+
     def download_url(self, file_name: str) -> str:
         """Direct download URL on the container (no token needed for reads)."""
         return f"{self.base_url}/api/file/{quote(file_name)}/download"

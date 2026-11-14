@@ -1,4 +1,4 @@
-"""Buttons: one per scan action (named like the container's web UI), plus rear pages when the container has no email action."""
+"""Buttons: one per scan action (named like the container's web UI), rear pages when the container has no email action, and finishing a waiting job without rear pages."""
 
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ScannerConfigEntry, asyn
     # is disabled in the container.
     if not any(action["target"] == "email" and action.get("enabled", True) for action in actions):
         entities.append(RearPagesButton(coordinator))
+    entities.append(FinishButton(coordinator))
     async_add_entities(entities)
 
 
@@ -99,4 +100,31 @@ class RearPagesButton(ScannerEntity, ButtonEntity):
             await self.coordinator.api.scan_rear(waiting["job"])
         except ScannerApiError as err:
             raise HomeAssistantError(f"Rear scan could not be started: {err}") from err
+        await self.coordinator.async_request_refresh()
+
+
+class FinishButton(ScannerEntity, ButtonEntity):
+    """Convert the job that waits for rear pages now, without them.
+
+    For single-sided documents: the next one can be scanned at once instead of
+    after the container's rear page wait. Only available while a job waits.
+    """
+
+    _attr_icon = "mdi:file-check-outline"
+
+    def __init__(self, coordinator: ScannerCoordinator) -> None:
+        super().__init__(coordinator, "finish")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.data.waiting_job is not None
+
+    async def async_press(self) -> None:
+        waiting = self.coordinator.data.waiting_job
+        if waiting is None:
+            raise HomeAssistantError("No scan is waiting for rear pages")
+        try:
+            await self.coordinator.api.finish(waiting["job"])
+        except ScannerApiError as err:
+            raise HomeAssistantError(f"Scan could not be finished: {err}") from err
         await self.coordinator.async_request_refresh()

@@ -112,6 +112,9 @@
     "button": {
       "scan_rear": {
         "name": "Scan rear pages"
+      },
+      "finish": {
+        "name": "Finish without rear pages"
       }
     },
     "select": {
